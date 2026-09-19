@@ -5,8 +5,8 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Prefetch, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import PaymentForm
-from .models import Game, Month, Payment, money
+from .forms import ExpenseContributionForm, PaymentForm
+from .models import Expense, ExpenseContribution, Game, Month, Payment, money
 
 ZERO = Decimal("0.00")
 
@@ -133,6 +133,11 @@ def my_payments(request):
         .select_related("game", "game__month")
         .order_by("-paid_on", "-created_at")
     )
+    contributions = (
+        ExpenseContribution.objects.filter(player=request.user)
+        .select_related("expense", "expense__month")
+        .order_by("-paid_on", "-created_at")
+    )
     confirmed_total = money(
         payments.filter(status=Payment.Status.CONFIRMED).aggregate(total=Sum("amount"))[
             "total"
@@ -142,6 +147,16 @@ def my_payments(request):
         payments.filter(status=Payment.Status.PENDING).aggregate(total=Sum("amount"))[
             "total"
         ]
+    )
+    contributions_confirmed_total = money(
+        contributions.filter(status=ExpenseContribution.Status.CONFIRMED).aggregate(
+            total=Sum("amount")
+        )["total"]
+    )
+    contributions_pending_total = money(
+        contributions.filter(status=ExpenseContribution.Status.PENDING).aggregate(
+            total=Sum("amount")
+        )["total"]
     )
 
     my_games = (
@@ -160,6 +175,11 @@ def my_payments(request):
         "payments": payments,
         "confirmed_total": confirmed_total,
         "pending_total": pending_total,
+        "contributions": contributions,
+        "contributions_confirmed_total": contributions_confirmed_total,
+        "contributions_pending_total": contributions_pending_total,
+        "confirmed_all_total": money(confirmed_total + contributions_confirmed_total),
+        "pending_all_total": money(pending_total + contributions_pending_total),
         "debts": debts,
         "debt_total": money(sum((item["debt"] for item in debts), ZERO)),
     }
@@ -188,15 +208,46 @@ def summary(request):
         for player in game.players.all():
             row = per_player.setdefault(
                 player.id,
-                {"player": player, "games": 0, "due": ZERO, "paid": ZERO, "debt": ZERO},
+                {
+                    "player": player,
+                    "games": 0,
+                    "due": ZERO,
+                    "paid_games": ZERO,
+                    "paid_expenses": ZERO,
+                    "paid_all": ZERO,
+                    "debt": ZERO,
+                },
             )
             row["games"] += 1
             row["due"] += game.share_per_player
-            row["paid"] += game.paid_by(player)
+            row["paid_games"] += game.paid_by(player)
+
+    scope_contribs = ExpenseContribution.objects.filter(
+        status=ExpenseContribution.Status.CONFIRMED
+    ).select_related("expense", "player")
+    if selected_month:
+        scope_contribs = scope_contribs.filter(expense__month=selected_month)
+    for c in scope_contribs:
+        row = per_player.setdefault(
+            c.player_id,
+            {
+                "player": c.player,
+                "games": 0,
+                "due": ZERO,
+                "paid_games": ZERO,
+                "paid_expenses": ZERO,
+                "paid_all": ZERO,
+                "debt": ZERO,
+            },
+        )
+        row["paid_expenses"] += c.amount
+
     for row in per_player.values():
         row["due"] = money(row["due"])
-        row["paid"] = money(row["paid"])
-        row["debt"] = max(money(row["due"] - row["paid"]), ZERO)
+        row["paid_games"] = money(row["paid_games"])
+        row["paid_expenses"] = money(row["paid_expenses"])
+        row["paid_all"] = money(row["paid_games"] + row["paid_expenses"])
+        row["debt"] = max(money(row["due"] - row["paid_games"]), ZERO)
 
     players_rows = sorted(
         per_player.values(), key=lambda row: (-row["debt"], str(row["player"]))
@@ -222,7 +273,88 @@ def summary(request):
         "selected_month": selected_month,
         "selected_month_id": month_id or "",
         "total_due": money(sum((row["due"] for row in players_rows), ZERO)),
-        "total_paid": money(sum((row["paid"] for row in players_rows), ZERO)),
+        "total_paid_games": money(sum((row["paid_games"] for row in players_rows), ZERO)),
+        "total_paid_expenses": money(
+            sum((row["paid_expenses"] for row in players_rows), ZERO)
+        ),
+        "total_paid_all": money(sum((row["paid_all"] for row in players_rows), ZERO)),
         "total_debt": money(sum((row["debt"] for row in players_rows), ZERO)),
     }
     return render(request, "tracker/summary.html", context)
+
+
+@login_required
+def expense_list(request):
+    month_id = request.GET.get("month")
+    expenses = Expense.objects.select_related("month").prefetch_related("contributions")
+    if month_id:
+        expenses = expenses.filter(month_id=month_id)
+    expenses = expenses.order_by("-spent_on")
+
+    rows = []
+    for expense in expenses:
+        my_paid = money(
+            expense.contributions.filter(
+                player=request.user, status=ExpenseContribution.Status.CONFIRMED
+            ).aggregate(total=Sum("amount"))["total"]
+        )
+        rows.append({"expense": expense, "my_paid": my_paid})
+
+    context = {
+        "rows": rows,
+        "months": Month.objects.all(),
+        "selected_month": month_id or "",
+    }
+    return render(request, "tracker/expense_list.html", context)
+
+
+@login_required
+def expense_detail(request, expense_id):
+    expense = get_object_or_404(
+        Expense.objects.select_related("month").prefetch_related(
+            Prefetch(
+                "contributions",
+                queryset=ExpenseContribution.objects.select_related("player"),
+            )
+        ),
+        pk=expense_id,
+    )
+
+    contributions = list(expense.contributions.all())
+    context = {
+        "expense": expense,
+        "contributions": contributions,
+        "my_confirmed": money(
+            sum(
+                (
+                    c.amount
+                    for c in contributions
+                    if c.player_id == request.user.id
+                    and c.status == ExpenseContribution.Status.CONFIRMED
+                ),
+                ZERO,
+            )
+        ),
+    }
+    return render(request, "tracker/expense_detail.html", context)
+
+
+@login_required
+def expense_contribute(request, expense_id):
+    expense = get_object_or_404(Expense.objects.select_related("month"), pk=expense_id)
+
+    if request.method == "POST":
+        form = ExpenseContributionForm(
+            request.POST, expense=expense, player=request.user
+        )
+        if form.is_valid():
+            form.save()
+            messages.success(
+                request, "Взнос записан и ждёт подтверждения администратора."
+            )
+            return redirect("tracker:expense_detail", expense_id=expense.id)
+    else:
+        form = ExpenseContributionForm(expense=expense, player=request.user)
+
+    context = {"form": form, "expense": expense}
+    return render(request, "tracker/expense_contribution_form.html", context)

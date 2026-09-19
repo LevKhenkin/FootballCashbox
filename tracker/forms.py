@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Payment
+from .models import ExpenseContribution, Payment
 
 
 class PaymentForm(forms.ModelForm):
@@ -30,3 +30,31 @@ class PaymentForm(forms.ModelForm):
         if commit:
             payment.save()
         return payment
+
+
+class ExpenseContributionForm(forms.ModelForm):
+    class Meta:
+        model = ExpenseContribution
+        fields = ["amount", "method", "paid_on", "comment"]
+        widgets = {
+            "paid_on": forms.DateInput(attrs={"type": "date"}),
+            "comment": forms.TextInput(attrs={"placeholder": "Например: перевёл на карту"}),
+        }
+
+    def __init__(self, *args, expense=None, player=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.expense = expense
+        self.player = player
+        if expense is not None and not self.initial.get("amount"):
+            if expense.remaining_total:
+                self.fields["amount"].initial = expense.remaining_total
+
+    def save(self, commit=True):
+        contribution = super().save(commit=False)
+        if self.expense is not None:
+            contribution.expense = self.expense
+        if self.player is not None:
+            contribution.player = self.player
+        if commit:
+            contribution.save()
+        return contribution

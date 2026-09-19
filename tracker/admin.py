@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Expense, Game, Month, Payment
+from .models import Expense, ExpenseContribution, Game, Month, Payment
 
 
 class ExpenseInline(admin.TabularInline):
@@ -10,6 +10,12 @@ class ExpenseInline(admin.TabularInline):
 
 class PaymentInline(admin.TabularInline):
     model = Payment
+    extra = 0
+    autocomplete_fields = ["player"]
+
+
+class ExpenseContributionInline(admin.TabularInline):
+    model = ExpenseContribution
     extra = 0
     autocomplete_fields = ["player"]
 
@@ -100,6 +106,48 @@ class PaymentAdmin(admin.ModelAdmin):
 
 @admin.register(Expense)
 class ExpenseAdmin(admin.ModelAdmin):
-    list_display = ["title", "amount", "month", "spent_on", "paid_by"]
+    list_display = [
+        "title",
+        "amount",
+        "month",
+        "spent_on",
+        "paid_by",
+        "collected_total",
+        "remaining_total",
+    ]
     list_filter = ["month", "spent_on"]
     search_fields = ["title", "comment"]
+    inlines = [ExpenseContributionInline]
+
+    @admin.display(description="Собрано")
+    def collected_total(self, obj):
+        return obj.collected_total
+
+    @admin.display(description="Осталось собрать")
+    def remaining_total(self, obj):
+        return obj.remaining_total
+
+
+@admin.register(ExpenseContribution)
+class ExpenseContributionAdmin(admin.ModelAdmin):
+    list_display = ["player", "expense", "amount", "method", "paid_on", "status"]
+    list_filter = ["status", "method", "expense__month", "paid_on"]
+    search_fields = [
+        "player__username",
+        "player__first_name",
+        "player__last_name",
+        "comment",
+        "expense__title",
+    ]
+    autocomplete_fields = ["player", "expense"]
+    actions = ["confirm_contributions", "reject_contributions"]
+
+    @admin.action(description="Подтвердить выбранные взносы")
+    def confirm_contributions(self, request, queryset):
+        updated = queryset.update(status=ExpenseContribution.Status.CONFIRMED)
+        self.message_user(request, f"Подтверждено взносов: {updated}")
+
+    @admin.action(description="Отклонить выбранные взносы")
+    def reject_contributions(self, request, queryset):
+        updated = queryset.update(status=ExpenseContribution.Status.REJECTED)
+        self.message_user(request, f"Отклонено взносов: {updated}")

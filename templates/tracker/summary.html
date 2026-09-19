@@ -19,7 +19,7 @@
 <h2>По игрокам{% if selected_month %} за {{ selected_month }}{% endif %}</h2>
 <table class="grid">
   <thead>
-    <tr><th>Игрок</th><th>Игр</th><th>Начислено</th><th>Оплачено</th><th>Долг</th></tr>
+    <tr><th>Игрок</th><th>Игр</th><th>Начислено</th><th>Оплачено (игры)</th><th>Взносы (траты)</th><th>Оплачено (всего)</th><th>Долг</th></tr>
   </thead>
   <tbody>
     {% for row in players_rows %}
@@ -27,16 +27,18 @@
         <td>{{ row.player.get_full_name|default:row.player.username }}</td>
         <td>{{ row.games }}</td>
         <td>{{ row.due }}</td>
-        <td>{{ row.paid }}</td>
+        <td>{{ row.paid_games }}</td>
+        <td>{{ row.paid_expenses }}</td>
+        <td class="ok">{{ row.paid_all }}</td>
         <td class="{% if row.debt %}warn{% else %}ok{% endif %}">{{ row.debt }}</td>
       </tr>
     {% empty %}
-      <tr><td colspan="5" class="empty">Данных пока нет.</td></tr>
+      <tr><td colspan="7" class="empty">Данных пока нет.</td></tr>
     {% endfor %}
   </tbody>
   {% if players_rows %}
     <tfoot>
-      <tr><th>Итого</th><th></th><th>{{ total_due }}</th><th>{{ total_paid }}</th><th class="{% if total_debt %}warn{% else %}ok{% endif %}">{{ total_debt }}</th></tr>
+      <tr><th>Итого</th><th></th><th>{{ total_due }}</th><th>{{ total_paid_games }}</th><th>{{ total_paid_expenses }}</th><th class="ok">{{ total_paid_all }}</th><th class="{% if total_debt %}warn{% else %}ok{% endif %}">{{ total_debt }}</th></tr>
     </tfoot>
   {% endif %}
 </table>

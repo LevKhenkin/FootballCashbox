@@ -6,8 +6,8 @@
 <h1>Мои оплаты</h1>
 
 <div class="cards">
-  <div class="card"><span class="label">Подтверждено</span><strong class="ok">{{ confirmed_total }}</strong></div>
-  <div class="card"><span class="label">Ждёт подтверждения</span><strong>{{ pending_total }}</strong></div>
+  <div class="card"><span class="label">Подтверждено (всего)</span><strong class="ok">{{ confirmed_all_total }}</strong></div>
+  <div class="card"><span class="label">Ждёт подтверждения (всего)</span><strong>{{ pending_all_total }}</strong></div>
   <div class="card"><span class="label">Текущий долг</span><strong class="{% if debt_total %}warn{% else %}ok{% endif %}">{{ debt_total }}</strong></div>
 </div>
 
@@ -28,6 +28,7 @@
 {% endif %}
 
 <h2>История</h2>
+<h3>Оплаты за игры</h3>
 <table class="grid">
   <thead>
     <tr><th>Дата</th><th>Игра</th><th>Сумма</th><th>Способ</th><th>Статус</th><th>Комментарий</th></tr>
@@ -44,6 +45,27 @@
       </tr>
     {% empty %}
       <tr><td colspan="6" class="empty">Оплат пока нет.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3>Взносы на общие траты</h3>
+<table class="grid">
+  <thead>
+    <tr><th>Дата</th><th>Трата</th><th>Сумма</th><th>Способ</th><th>Статус</th><th>Комментарий</th></tr>
+  </thead>
+  <tbody>
+    {% for contribution in contributions %}
+      <tr>
+        <td>{{ contribution.paid_on }}</td>
+        <td><a href="{% url 'tracker:expense_detail' contribution.expense.pk %}">{{ contribution.expense.title }}</a></td>
+        <td>{{ contribution.amount }}</td>
+        <td>{{ contribution.get_method_display }}</td>
+        <td><span class="status {{ contribution.status }}">{{ contribution.get_status_display }}</span></td>
+        <td>{{ contribution.comment }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6" class="empty">Взносов на траты пока нет.</td></tr>
     {% endfor %}
   </tbody>
 </table>

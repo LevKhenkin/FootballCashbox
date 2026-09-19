@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from tracker.models import Expense, Game, Month, Payment
+from tracker.models import Expense, ExpenseContribution, Game, Month, Payment
 
 
 class Command(BaseCommand):
@@ -76,11 +76,24 @@ class Command(BaseCommand):
                 status=Payment.Status.PENDING,
             )
 
-        Expense.objects.get_or_create(
+        expense, _ = Expense.objects.get_or_create(
             title="Мяч",
             month=month,
             defaults={"amount": Decimal("2500.00"), "paid_by": admin},
         )
+        if not expense.contributions.exists():
+            ExpenseContribution.objects.create(
+                expense=expense,
+                player=players[1],
+                amount=Decimal("1000.00"),
+                status=ExpenseContribution.Status.CONFIRMED,
+            )
+            ExpenseContribution.objects.create(
+                expense=expense,
+                player=players[2],
+                amount=Decimal("500.00"),
+                status=ExpenseContribution.Status.PENDING,
+            )
 
         self.stdout.write(
             self.style.SUCCESS(
