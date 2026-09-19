@@ -1,4 +1,6 @@
-{% load static %}<!DOCTYPE html>
+{% load static %}
+{% load user_display %}
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="utf-8">
@@ -15,11 +17,12 @@
         <a href="{% url 'tracker:expense_list' %}">Траты</a>
         <a href="{% url 'tracker:my_payments' %}">Мои оплаты</a>
         <a href="{% url 'tracker:summary' %}">Сводка</a>
+        <a href="{% url 'tracker:profile' %}">Профиль</a>
         {% if user.is_staff %}<a href="{% url 'admin:index' %}">Админка</a>{% endif %}
       </nav>
       <form class="logout" method="post" action="{% url 'logout' %}">
         {% csrf_token %}
-        <span class="user">{{ user.get_full_name|default:user.username }}</span>
+        <span class="user">{{ user|display_name }}</span>
         <button type="submit">Выйти</button>
       </form>
     {% endif %}

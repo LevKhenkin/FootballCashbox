@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load user_display %}
 
 {% block title %}{{ expense.title }} — Футбольная касса{% endblock %}
 
@@ -24,7 +25,7 @@
   <tbody>
     {% for c in contributions %}
       <tr>
-        <td>{{ c.player.get_full_name|default:c.player.username }}</td>
+        <td>{{ c.player|display_name }}</td>
         <td>{{ c.amount }}</td>
         <td>{{ c.paid_on }}</td>
         <td><span class="status {{ c.status }}">{{ c.get_status_display }}</span></td>
