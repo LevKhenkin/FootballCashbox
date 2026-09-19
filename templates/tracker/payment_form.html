@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Внести оплату — Футбольная касса{% endblock %}
+
+{% block content %}
+<div class="card narrow">
+  <h1>Оплата за игру</h1>
+  <p class="muted">{{ game }} · доля с игрока: {{ game.share_per_player }} · ваш долг: {{ my_debt }}</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="primary" type="submit">Сохранить</button>
+    <a class="btn" href="{% url 'tracker:game_detail' game.pk %}">Отмена</a>
+  </form>
+</div>
+{% endblock %}

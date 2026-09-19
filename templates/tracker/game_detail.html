@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}{{ game }} — Футбольная касса{% endblock %}
+
+{% block content %}
+<h1>{{ game }}</h1>
+
+<div class="cards">
+  <div class="card"><span class="label">Месяц</span><strong>{{ game.month }}</strong></div>
+  <div class="card"><span class="label">Стоимость</span><strong>{{ game.cost }}</strong></div>
+  <div class="card"><span class="label">Доля с игрока</span><strong>{{ game.share_per_player }}</strong></div>
+  <div class="card"><span class="label">Собрано</span><strong>{{ game.collected_total }}</strong></div>
+  <div class="card"><span class="label">Осталось</span><strong class="{% if game.is_fully_paid %}ok{% else %}warn{% endif %}">{{ game.remaining_total }}</strong></div>
+  <div class="card"><span class="label">Ждёт подтверждения</span><strong>{{ game.pending_total }}</strong></div>
+</div>
+
+{% if is_participant %}
+  <p><a class="btn primary" href="{% url 'tracker:payment_create' game.pk %}">Внести свою оплату</a></p>
+{% endif %}
+
+<h2>Кто что оплатил</h2>
+<table class="grid">
+  <thead>
+    <tr>
+      <th>Игрок</th>
+      <th>Подтверждено</th>
+      <th>Ожидает</th>
+      <th>Долг</th>
+      <th>Оплаты</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+      <tr>
+        <td>{{ row.player.get_full_name|default:row.player.username }}</td>
+        <td>{{ row.confirmed }}</td>
+        <td>{{ row.pending }}</td>
+        <td class="{% if row.debt %}warn{% else %}ok{% endif %}">{{ row.debt }}</td>
+        <td>
+          {% for payment in row.payments %}
+            <div class="payment-line">
+              {{ payment.amount }} · {{ payment.get_method_display }} · {{ payment.paid_on }} ·
+              <span class="status {{ payment.status }}">{{ payment.get_status_display }}</span>
+              {% if payment.comment %}<em>{{ payment.comment }}</em>{% endif %}
+            </div>
+          {% empty %}
+            <span class="empty">нет оплат</span>
+          {% endfor %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5" class="empty">Участники игры не заданы.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if extra_payments %}
+  <h2>Оплаты вне списка участников</h2>
+  <ul>
+    {% for payment in extra_payments %}
+      <li>{{ payment.player }} — {{ payment.amount }} ({{ payment.get_status_display }})</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+{% endblock %}

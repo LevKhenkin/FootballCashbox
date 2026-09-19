@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Сводка — Футбольная касса{% endblock %}
+
+{% block content %}
+<h1>Сводка</h1>
+
+<form class="filters" method="get">
+  <label for="month">Месяц</label>
+  <select id="month" name="month" onchange="this.form.submit()">
+    <option value="">Все игры</option>
+    {% for month in months %}
+      <option value="{{ month.pk }}" {% if selected_month_id == month.pk|stringformat:"s" %}selected{% endif %}>{{ month }}</option>
+    {% endfor %}
+  </select>
+  <noscript><button type="submit">Показать</button></noscript>
+</form>
+
+<h2>По игрокам{% if selected_month %} за {{ selected_month }}{% endif %}</h2>
+<table class="grid">
+  <thead>
+    <tr><th>Игрок</th><th>Игр</th><th>Начислено</th><th>Оплачено</th><th>Долг</th></tr>
+  </thead>
+  <tbody>
+    {% for row in players_rows %}
+      <tr>
+        <td>{{ row.player.get_full_name|default:row.player.username }}</td>
+        <td>{{ row.games }}</td>
+        <td>{{ row.due }}</td>
+        <td>{{ row.paid }}</td>
+        <td class="{% if row.debt %}warn{% else %}ok{% endif %}">{{ row.debt }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5" class="empty">Данных пока нет.</td></tr>
+    {% endfor %}
+  </tbody>
+  {% if players_rows %}
+    <tfoot>
+      <tr><th>Итого</th><th></th><th>{{ total_due }}</th><th>{{ total_paid }}</th><th class="{% if total_debt %}warn{% else %}ok{% endif %}">{{ total_debt }}</th></tr>
+    </tfoot>
+  {% endif %}
+</table>
+
+<h2>По месяцам</h2>
+<table class="grid">
+  <thead>
+    <tr><th>Месяц</th><th>Зал</th><th>Общие траты</th><th>Нужно собрать</th><th>Собрано</th><th>Баланс</th></tr>
+  </thead>
+  <tbody>
+    {% for row in months_rows %}
+      <tr>
+        <td>{{ row.month }}</td>
+        <td>{{ row.hall_fee }}</td>
+        <td>{{ row.expenses_total }}</td>
+        <td>{{ row.total_due }}</td>
+        <td>{{ row.collected }}</td>
+        <td class="{% if row.balance < 0 %}warn{% else %}ok{% endif %}">{{ row.balance }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6" class="empty">Месяцы ещё не заведены.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% for month in months %}
+  {% if month.expenses.all %}
+    <h3>Общие траты за {{ month }}</h3>
+    <ul>
+      {% for expense in month.expenses.all %}
+        <li>{{ expense.spent_on }} — {{ expense.title }}: {{ expense.amount }}{% if expense.paid_by %} (оплатил {{ expense.paid_by }}){% endif %}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endfor %}
+{% endblock %}

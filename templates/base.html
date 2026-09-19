@@ -1,0 +1,36 @@
+{% load static %}<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Футбольная касса{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'tracker/app.css' %}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="{% url 'tracker:game_list' %}">⚽ Футбольная касса</a>
+    {% if user.is_authenticated %}
+      <nav class="nav">
+        <a href="{% url 'tracker:game_list' %}">Игры</a>
+        <a href="{% url 'tracker:my_payments' %}">Мои оплаты</a>
+        <a href="{% url 'tracker:summary' %}">Сводка</a>
+        {% if user.is_staff %}<a href="{% url 'admin:index' %}">Админка</a>{% endif %}
+      </nav>
+      <form class="logout" method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <span class="user">{{ user.get_full_name|default:user.username }}</span>
+        <button type="submit">Выйти</button>
+      </form>
+    {% endif %}
+  </header>
+
+  <main class="container">
+    {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}<li class="msg {{ message.tags }}">{{ message }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

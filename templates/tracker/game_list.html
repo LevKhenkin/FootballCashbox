@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Игры — Футбольная касса{% endblock %}
+
+{% block content %}
+<h1>Игры</h1>
+
+<form class="filters" method="get">
+  <label for="month">Месяц</label>
+  <select id="month" name="month" onchange="this.form.submit()">
+    <option value="">Все</option>
+    {% for month in months %}
+      <option value="{{ month.pk }}" {% if selected_month == month.pk|stringformat:"s" %}selected{% endif %}>{{ month }}</option>
+    {% endfor %}
+  </select>
+  <noscript><button type="submit">Показать</button></noscript>
+</form>
+
+<table class="grid">
+  <thead>
+    <tr>
+      <th>Игра</th>
+      <th>Месяц</th>
+      <th>Стоимость</th>
+      <th>Игроков</th>
+      <th>Доля</th>
+      <th>Собрано</th>
+      <th>Осталось</th>
+      <th>Мой долг</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+      <tr>
+        <td><a href="{% url 'tracker:game_detail' row.game.pk %}">{{ row.game }}</a></td>
+        <td>{{ row.game.month }}</td>
+        <td>{{ row.game.cost }}</td>
+        <td>{{ row.game.players_count }}</td>
+        <td>{{ row.game.share_per_player }}</td>
+        <td>{{ row.game.collected_total }}</td>
+        <td class="{% if row.game.is_fully_paid %}ok{% else %}warn{% endif %}">{{ row.game.remaining_total }}</td>
+        <td>{% if row.is_participant %}{{ row.my_debt }}{% else %}—{% endif %}</td>
+        <td>
+          {% if row.is_participant %}
+            <a class="btn" href="{% url 'tracker:payment_create' row.game.pk %}">Внести оплату</a>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="9" class="empty">Игр пока нет. Их создаёт администратор.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
