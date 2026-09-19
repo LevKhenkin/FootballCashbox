@@ -44,6 +44,7 @@ DEBUG = _env_bool("DJANGO_DEBUG", True)
 
 ALLOWED_HOSTS = _env_csv("DJANGO_ALLOWED_HOSTS") if not DEBUG else ["*"]
 CSRF_TRUSTED_ORIGINS = _env_csv("DJANGO_CSRF_TRUSTED_ORIGINS")
+USE_HTTPS = _env_bool("DJANGO_USE_HTTPS", True)
 
 if not DEBUG:
     if SECRET_KEY == "django-insecure-dev-only-change-me":
@@ -150,20 +151,25 @@ LOGIN_REDIRECT_URL = 'tracker:game_list'
 LOGOUT_REDIRECT_URL = 'login'
 
 if not DEBUG:
-    # Behind a reverse proxy (nginx), mark requests as secure via header.
-    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-    SECURE_SSL_REDIRECT = True
-
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    if USE_HTTPS:
+        # Behind a reverse proxy (nginx), mark requests as secure via header.
+        SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+        SECURE_SSL_REDIRECT = True
+        SESSION_COOKIE_SECURE = True
+        CSRF_COOKIE_SECURE = True
+    else:
+        SECURE_SSL_REDIRECT = False
+        SESSION_COOKIE_SECURE = False
+        CSRF_COOKIE_SECURE = False
 
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "DENY"
     SECURE_REFERRER_POLICY = "same-origin"
 
-    SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_SECURE_HSTS_SECONDS", "3600"))
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
+    if USE_HTTPS and _env_bool("DJANGO_ENABLE_HSTS", False):
+        SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_SECURE_HSTS_SECONDS", "3600"))
+        SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+        SECURE_HSTS_PRELOAD = True
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
