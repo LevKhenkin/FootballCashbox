@@ -6,7 +6,7 @@ from django.db.models import Prefetch, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import PaymentForm
-from .models import Game, Month, Payment
+from .models import Game, Month, Payment, money
 
 ZERO = Decimal("0.00")
 
@@ -58,20 +58,32 @@ def game_detail(request, game_id):
     rows = []
     for player in game.players.all():
         player_payments = [p for p in payments if p.player_id == player.id]
-        confirmed = sum(
-            (p.amount for p in player_payments if p.status == Payment.Status.CONFIRMED),
-            ZERO,
+        confirmed = money(
+            sum(
+                (
+                    p.amount
+                    for p in player_payments
+                    if p.status == Payment.Status.CONFIRMED
+                ),
+                ZERO,
+            )
         )
-        pending = sum(
-            (p.amount for p in player_payments if p.status == Payment.Status.PENDING),
-            ZERO,
+        pending = money(
+            sum(
+                (
+                    p.amount
+                    for p in player_payments
+                    if p.status == Payment.Status.PENDING
+                ),
+                ZERO,
+            )
         )
         rows.append(
             {
                 "player": player,
                 "confirmed": confirmed,
                 "pending": pending,
-                "debt": max(game.share_per_player - confirmed, ZERO),
+                "debt": max(money(game.share_per_player - confirmed), ZERO),
                 "payments": player_payments,
             }
         )
@@ -121,17 +133,15 @@ def my_payments(request):
         .select_related("game", "game__month")
         .order_by("-paid_on", "-created_at")
     )
-    confirmed_total = (
+    confirmed_total = money(
         payments.filter(status=Payment.Status.CONFIRMED).aggregate(total=Sum("amount"))[
             "total"
         ]
-        or ZERO
     )
-    pending_total = (
+    pending_total = money(
         payments.filter(status=Payment.Status.PENDING).aggregate(total=Sum("amount"))[
             "total"
         ]
-        or ZERO
     )
 
     my_games = (
@@ -151,7 +161,7 @@ def my_payments(request):
         "confirmed_total": confirmed_total,
         "pending_total": pending_total,
         "debts": debts,
-        "debt_total": sum((item["debt"] for item in debts), ZERO),
+        "debt_total": money(sum((item["debt"] for item in debts), ZERO)),
     }
     return render(request, "tracker/my_payments.html", context)
 
@@ -184,7 +194,9 @@ def summary(request):
             row["due"] += game.share_per_player
             row["paid"] += game.paid_by(player)
     for row in per_player.values():
-        row["debt"] = max(row["due"] - row["paid"], ZERO)
+        row["due"] = money(row["due"])
+        row["paid"] = money(row["paid"])
+        row["debt"] = max(money(row["due"] - row["paid"]), ZERO)
 
     players_rows = sorted(
         per_player.values(), key=lambda row: (-row["debt"], str(row["player"]))
@@ -209,8 +221,8 @@ def summary(request):
         "players_rows": players_rows,
         "selected_month": selected_month,
         "selected_month_id": month_id or "",
-        "total_due": sum((row["due"] for row in players_rows), ZERO),
-        "total_paid": sum((row["paid"] for row in players_rows), ZERO),
-        "total_debt": sum((row["debt"] for row in players_rows), ZERO),
+        "total_due": money(sum((row["due"] for row in players_rows), ZERO)),
+        "total_paid": money(sum((row["paid"] for row in players_rows), ZERO)),
+        "total_debt": money(sum((row["debt"] for row in players_rows), ZERO)),
     }
     return render(request, "tracker/summary.html", context)

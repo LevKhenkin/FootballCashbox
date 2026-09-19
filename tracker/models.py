@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import ROUND_CEILING, ROUND_HALF_UP, Decimal
 
 from django.conf import settings
 from django.core.validators import MinValueValidator
@@ -7,7 +7,15 @@ from django.db.models import Sum
 from django.utils import timezone
 
 
+CENTS = Decimal("0.01")
 ZERO = Decimal("0.00")
+
+
+def money(value) -> Decimal:
+    """Приводит сумму к рублям и копейкам: агрегаты БД возвращают лишнюю точность."""
+    if value is None:
+        return ZERO
+    return Decimal(value).quantize(CENTS, rounding=ROUND_HALF_UP)
 
 
 class Month(models.Model):
@@ -43,25 +51,25 @@ class Month(models.Model):
 
     @property
     def expenses_total(self) -> Decimal:
-        return self.expenses.aggregate(total=Sum("amount"))["total"] or ZERO
+        return money(self.expenses.aggregate(total=Sum("amount"))["total"])
 
     @property
     def total_due(self) -> Decimal:
         """Сколько всего нужно собрать за месяц: зал + общие траты."""
-        return self.hall_fee + self.expenses_total
+        return money(self.hall_fee + self.expenses_total)
 
     @property
     def collected_total(self) -> Decimal:
-        return (
-            Payment.objects.filter(game__month=self, status=Payment.Status.CONFIRMED)
-            .aggregate(total=Sum("amount"))["total"]
-            or ZERO
+        return money(
+            Payment.objects.filter(
+                game__month=self, status=Payment.Status.CONFIRMED
+            ).aggregate(total=Sum("amount"))["total"]
         )
 
     @property
     def balance(self) -> Decimal:
         """Положительное значение — собрано больше, чем нужно."""
-        return self.collected_total - self.total_due
+        return money(self.collected_total - self.total_due)
 
 
 class Game(models.Model):
@@ -107,48 +115,49 @@ class Game(models.Model):
 
     @property
     def share_per_player(self) -> Decimal:
-        """Сколько должен внести каждый участник игры."""
+        """Сколько должен внести каждый участник игры.
+
+        Округление вверх до копейки, иначе при неделимой сумме (4000 на троих)
+        взносы всех игроков не покрывают стоимость и игра остаётся недоплаченной.
+        """
         count = self.players_count
         if not count or not self.cost:
             return ZERO
-        return (self.cost / count).quantize(Decimal("0.01"))
+        return (self.cost / count).quantize(CENTS, rounding=ROUND_CEILING)
 
     @property
     def collected_total(self) -> Decimal:
-        return (
+        return money(
             self.payments.filter(status=Payment.Status.CONFIRMED).aggregate(
                 total=Sum("amount")
             )["total"]
-            or ZERO
         )
 
     @property
     def pending_total(self) -> Decimal:
-        return (
+        return money(
             self.payments.filter(status=Payment.Status.PENDING).aggregate(
                 total=Sum("amount")
             )["total"]
-            or ZERO
         )
 
     @property
     def remaining_total(self) -> Decimal:
-        return max(self.cost - self.collected_total, ZERO)
+        return max(money(self.cost - self.collected_total), ZERO)
 
     @property
     def is_fully_paid(self) -> bool:
         return self.cost > ZERO and self.collected_total >= self.cost
 
     def paid_by(self, user) -> Decimal:
-        return (
-            self.payments.filter(player=user, status=Payment.Status.CONFIRMED).aggregate(
-                total=Sum("amount")
-            )["total"]
-            or ZERO
+        return money(
+            self.payments.filter(
+                player=user, status=Payment.Status.CONFIRMED
+            ).aggregate(total=Sum("amount"))["total"]
         )
 
     def debt_of(self, user) -> Decimal:
-        return max(self.share_per_player - self.paid_by(user), ZERO)
+        return max(money(self.share_per_player - self.paid_by(user)), ZERO)
 
 
 class Payment(models.Model):

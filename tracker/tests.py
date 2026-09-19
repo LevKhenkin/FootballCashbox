@@ -22,6 +22,38 @@ class GameCalculationTests(BaseData):
     def test_share_is_split_between_participants(self):
         self.assertEqual(self.game.share_per_player, Decimal("1500.00"))
 
+    def test_indivisible_cost_is_covered_by_rounded_up_shares(self):
+        game = Game.objects.create(month=self.month, cost=Decimal("4000"))
+        carol = User.objects.create_user("carol", password="pass12345")
+        game.players.add(self.alice, self.bob, carol)
+
+        self.assertEqual(game.share_per_player, Decimal("1333.34"))
+        for player in (self.alice, self.bob, carol):
+            Payment.objects.create(
+                game=game,
+                player=player,
+                amount=game.share_per_player,
+                status=Payment.Status.CONFIRMED,
+            )
+        self.assertEqual(game.remaining_total, Decimal("0.00"))
+        self.assertTrue(game.is_fully_paid)
+
+    def test_totals_are_rounded_to_kopecks(self):
+        Payment.objects.create(
+            game=self.game,
+            player=self.alice,
+            amount=Decimal("1500"),
+            status=Payment.Status.CONFIRMED,
+        )
+        for value in (
+            self.game.collected_total,
+            self.game.remaining_total,
+            self.game.paid_by(self.alice),
+            self.month.collected_total,
+            self.month.balance,
+        ):
+            self.assertEqual(value.as_tuple().exponent, -2, msg=value)
+
     def test_share_is_zero_without_participants(self):
         empty_game = Game.objects.create(month=self.month, cost=Decimal("1000"))
         self.assertEqual(empty_game.share_per_player, Decimal("0.00"))
