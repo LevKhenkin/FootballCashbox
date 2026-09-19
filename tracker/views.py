@@ -126,6 +126,28 @@ def payment_create(request, game_id):
 
 
 @login_required
+def game_join(request, game_id):
+    if request.method != "POST":
+        return redirect("tracker:game_detail", game_id=game_id)
+
+    game = get_object_or_404(Game.objects.select_related("month"), pk=game_id)
+    if getattr(game.month, "is_closed", False):
+        messages.error(request, "Месяц закрыт — записаться на игру уже нельзя.")
+        return redirect("tracker:game_detail", game_id=game.id)
+
+    if request.user not in game.players.all():
+        game.players.add(request.user)
+        messages.success(request, "Вы добавлены в участники игры.")
+    else:
+        messages.info(request, "Вы уже в списке участников этой игры.")
+
+    next_url = request.POST.get("next") or ""
+    if next_url.startswith("/"):
+        return redirect(next_url)
+    return redirect("tracker:game_detail", game_id=game.id)
+
+
+@login_required
 def my_payments(request):
     """Личная история оплат игрока и текущие долги по играм."""
     payments = (
