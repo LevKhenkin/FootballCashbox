@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}{{ expense.title }} — Футбольная касса{% endblock %}
+
+{% block content %}
+<h1>{{ expense.title }}</h1>
+
+<div class="cards">
+  <div class="card"><span class="label">Месяц</span><strong>{{ expense.month }}</strong></div>
+  <div class="card"><span class="label">Сумма</span><strong>{{ expense.amount }}</strong></div>
+  <div class="card"><span class="label">Собрано</span><strong>{{ expense.collected_total }}</strong></div>
+  <div class="card"><span class="label">Осталось</span><strong class="{% if expense.is_fully_paid %}ok{% else %}warn{% endif %}">{{ expense.remaining_total }}</strong></div>
+  <div class="card"><span class="label">Ждёт подтверждения</span><strong>{{ expense.pending_total }}</strong></div>
+  <div class="card"><span class="label">Мой подтверждённый вклад</span><strong class="ok">{{ my_confirmed }}</strong></div>
+</div>
+
+<p><a class="btn primary" href="{% url 'tracker:expense_contribute' expense.pk %}">Скинуться на трату</a></p>
+
+<h2>Кто скинулся</h2>
+<table class="grid">
+  <thead>
+    <tr><th>Игрок</th><th>Сумма</th><th>Дата</th><th>Статус</th><th>Комментарий</th></tr>
+  </thead>
+  <tbody>
+    {% for c in contributions %}
+      <tr>
+        <td>{{ c.player.get_full_name|default:c.player.username }}</td>
+        <td>{{ c.amount }}</td>
+        <td>{{ c.paid_on }}</td>
+        <td><span class="status {{ c.status }}">{{ c.get_status_display }}</span></td>
+        <td>{{ c.comment }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5" class="empty">Пока никто не скидывался.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
+

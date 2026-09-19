@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Скинуться на трату — Футбольная касса{% endblock %}
+
+{% block content %}
+<div class="card narrow">
+  <h1>Взнос на трату</h1>
+  <p class="muted">{{ expense.title }} · сумма: {{ expense.amount }} · осталось собрать: {{ expense.remaining_total }}</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="primary" type="submit">Сохранить</button>
+    <a class="btn" href="{% url 'tracker:expense_detail' expense.pk %}">Отмена</a>
+  </form>
+</div>
+{% endblock %}
+

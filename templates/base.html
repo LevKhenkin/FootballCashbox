@@ -12,6 +12,7 @@
     {% if user.is_authenticated %}
       <nav class="nav">
         <a href="{% url 'tracker:game_list' %}">Игры</a>
+        <a href="{% url 'tracker:expense_list' %}">Траты</a>
         <a href="{% url 'tracker:my_payments' %}">Мои оплаты</a>
         <a href="{% url 'tracker:summary' %}">Сводка</a>
         {% if user.is_staff %}<a href="{% url 'admin:index' %}">Админка</a>{% endif %}

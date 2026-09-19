@@ -60,11 +60,13 @@ class Month(models.Model):
 
     @property
     def collected_total(self) -> Decimal:
-        return money(
-            Payment.objects.filter(
-                game__month=self, status=Payment.Status.CONFIRMED
-            ).aggregate(total=Sum("amount"))["total"]
-        )
+        payments_total = Payment.objects.filter(
+            game__month=self, status=Payment.Status.CONFIRMED
+        ).aggregate(total=Sum("amount"))["total"]
+        contributions_total = ExpenseContribution.objects.filter(
+            expense__month=self, status=ExpenseContribution.Status.CONFIRMED
+        ).aggregate(total=Sum("amount"))["total"]
+        return money((payments_total or ZERO) + (contributions_total or ZERO))
 
     @property
     def balance(self) -> Decimal:
@@ -242,3 +244,78 @@ class Expense(models.Model):
 
     def __str__(self):
         return f"{self.title} — {self.amount}"
+
+    @property
+    def collected_total(self) -> Decimal:
+        return money(
+            self.contributions.filter(
+                status=ExpenseContribution.Status.CONFIRMED
+            ).aggregate(total=Sum("amount"))["total"]
+        )
+
+    @property
+    def pending_total(self) -> Decimal:
+        return money(
+            self.contributions.filter(status=ExpenseContribution.Status.PENDING).aggregate(
+                total=Sum("amount")
+            )["total"]
+        )
+
+    @property
+    def remaining_total(self) -> Decimal:
+        return max(money(self.amount - self.collected_total), ZERO)
+
+    @property
+    def is_fully_paid(self) -> bool:
+        return self.amount > ZERO and self.collected_total >= self.amount
+
+
+class ExpenseContribution(models.Model):
+    """Взнос игрока на конкретную общую трату."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Ожидает подтверждения"
+        CONFIRMED = "confirmed", "Подтверждён"
+        REJECTED = "rejected", "Отклонён"
+
+    class Method(models.TextChoices):
+        CASH = "cash", "Наличные"
+        TRANSFER = "transfer", "Перевод"
+        OTHER = "other", "Другое"
+
+    expense = models.ForeignKey(
+        Expense,
+        verbose_name="Трата",
+        on_delete=models.CASCADE,
+        related_name="contributions",
+    )
+    player = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Игрок",
+        on_delete=models.CASCADE,
+        related_name="expense_contributions",
+    )
+    amount = models.DecimalField(
+        "Сумма",
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    method = models.CharField(
+        "Способ оплаты", max_length=16, choices=Method.choices, default=Method.TRANSFER
+    )
+    paid_on = models.DateField("Дата оплаты", default=timezone.localdate)
+    status = models.CharField(
+        "Статус", max_length=16, choices=Status.choices, default=Status.PENDING
+    )
+    comment = models.CharField("Комментарий", max_length=255, blank=True)
+    created_at = models.DateTimeField("Создан", auto_now_add=True)
+    updated_at = models.DateTimeField("Обновлён", auto_now=True)
+
+    class Meta:
+        verbose_name = "Взнос на трату"
+        verbose_name_plural = "Взносы на траты"
+        ordering = ["-paid_on", "-created_at"]
+
+    def __str__(self):
+        return f"{self.player} — {self.amount} ({self.expense})"

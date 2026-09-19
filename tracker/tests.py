@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import Expense, Game, Month, Payment
+from .models import Expense, ExpenseContribution, Game, Month, Payment
 
 
 class BaseData(TestCase):
@@ -100,6 +100,16 @@ class MonthTotalsTests(BaseData):
         self.assertEqual(self.month.collected_total, Decimal("1500"))
         self.assertEqual(self.month.balance, Decimal("-10500"))
 
+    def test_collected_total_includes_expense_contributions(self):
+        expense = Expense.objects.create(title="Мяч", amount=Decimal("2500"), month=self.month)
+        ExpenseContribution.objects.create(
+            expense=expense,
+            player=self.alice,
+            amount=Decimal("1000"),
+            status=ExpenseContribution.Status.CONFIRMED,
+        )
+        self.assertEqual(self.month.collected_total, Decimal("1000.00"))
+
 
 class ViewTests(BaseData):
     def test_pages_require_login(self):
@@ -159,5 +169,23 @@ class ViewTests(BaseData):
         self.client.force_login(self.bob)
         response = self.client.get(reverse("tracker:my_payments"))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["confirmed_total"], Decimal("500"))
+        self.assertEqual(response.context["confirmed_total"], Decimal("500.00"))
         self.assertEqual(response.context["debt_total"], Decimal("1000.00"))
+
+    def test_player_can_contribute_to_expense(self):
+        expense = Expense.objects.create(title="Мяч", amount=Decimal("2500"), month=self.month)
+        self.client.force_login(self.alice)
+        response = self.client.post(
+            reverse("tracker:expense_contribute", args=[expense.pk]),
+            {
+                "amount": "1000",
+                "method": ExpenseContribution.Method.TRANSFER,
+                "paid_on": "2026-09-19",
+                "comment": "на мяч",
+            },
+        )
+        self.assertRedirects(response, reverse("tracker:expense_detail", args=[expense.pk]))
+        c = ExpenseContribution.objects.get()
+        self.assertEqual(c.player, self.alice)
+        self.assertEqual(c.expense, expense)
+        self.assertEqual(c.status, ExpenseContribution.Status.PENDING)
