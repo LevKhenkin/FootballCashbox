@@ -117,6 +117,10 @@ class ViewTests(BaseData):
         self.assertEqual(response.status_code, 302)
         self.assertIn(reverse("login"), response["Location"])
 
+        response = self.client.get(reverse("tracker:profile"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("login"), response["Location"])
+
     def test_player_can_record_own_payment(self):
         self.client.force_login(self.alice)
         response = self.client.post(
@@ -189,3 +193,20 @@ class ViewTests(BaseData):
         self.assertEqual(c.player, self.alice)
         self.assertEqual(c.expense, expense)
         self.assertEqual(c.status, ExpenseContribution.Status.PENDING)
+
+    def test_profile_can_update_user_fields(self):
+        self.client.force_login(self.alice)
+        response = self.client.post(
+            reverse("tracker:profile"),
+            {
+                "first_name": "Иван",
+                "last_name": "Иванов",
+                "email": "ivan@example.com",
+                "username": "alice",
+            },
+        )
+        self.assertRedirects(response, reverse("tracker:profile"))
+        self.alice.refresh_from_db()
+        self.assertEqual(self.alice.first_name, "Иван")
+        self.assertEqual(self.alice.last_name, "Иванов")
+        self.assertEqual(self.alice.email, "ivan@example.com")

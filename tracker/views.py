@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Prefetch, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import ExpenseContributionForm, PaymentForm
+from .forms import ExpenseContributionForm, PaymentForm, ProfileForm
 from .models import Expense, ExpenseContribution, Game, Month, Payment, money
 
 ZERO = Decimal("0.00")
@@ -358,3 +358,17 @@ def expense_contribute(request, expense_id):
 
     context = {"form": form, "expense": expense}
     return render(request, "tracker/expense_contribution_form.html", context)
+
+
+@login_required
+def profile(request):
+    if request.method == "POST":
+        form = ProfileForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Профиль обновлён.")
+            return redirect("tracker:profile")
+    else:
+        form = ProfileForm(instance=request.user)
+
+    return render(request, "tracker/profile.html", {"form": form})

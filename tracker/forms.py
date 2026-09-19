@@ -1,6 +1,9 @@
 from django import forms
+from django.contrib.auth import get_user_model
 
 from .models import ExpenseContribution, Payment
+
+User = get_user_model()
 
 
 class PaymentForm(forms.ModelForm):
@@ -58,3 +61,23 @@ class ExpenseContributionForm(forms.ModelForm):
         if commit:
             contribution.save()
         return contribution
+
+
+class ProfileForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name", "email", "username"]
+        labels = {
+            "first_name": "Имя",
+            "last_name": "Фамилия",
+            "email": "Email",
+            "username": "Логин",
+        }
+        widgets = {
+            "email": forms.EmailInput(attrs={"autocomplete": "email"}),
+            "username": forms.TextInput(attrs={"autocomplete": "username"}),
+        }
+
+    def clean_email(self):
+        email = (self.cleaned_data.get("email") or "").strip()
+        return email

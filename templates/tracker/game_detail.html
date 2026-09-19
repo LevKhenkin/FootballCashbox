@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load user_display %}
 
 {% block title %}{{ game }} — Футбольная касса{% endblock %}
 
@@ -32,7 +33,7 @@
   <tbody>
     {% for row in rows %}
       <tr>
-        <td>{{ row.player.get_full_name|default:row.player.username }}</td>
+        <td>{{ row.player|display_name }}</td>
         <td>{{ row.confirmed }}</td>
         <td>{{ row.pending }}</td>
         <td class="{% if row.debt %}warn{% else %}ok{% endif %}">{{ row.debt }}</td>
