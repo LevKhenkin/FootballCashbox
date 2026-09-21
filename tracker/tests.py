@@ -140,6 +140,26 @@ class ViewTests(BaseData):
         self.assertEqual(payment.game, self.game)
         self.assertEqual(payment.status, Payment.Status.PENDING)
 
+    def test_player_can_join_game(self):
+        carol = User.objects.create_user("carol", password="pass12345")
+        self.assertNotIn(carol, self.game.players.all())
+
+        self.client.force_login(carol)
+        response = self.client.post(reverse("tracker:game_join", args=[self.game.pk]))
+        self.assertRedirects(response, reverse("tracker:game_detail", args=[self.game.pk]))
+        self.game.refresh_from_db()
+        self.assertIn(carol, self.game.players.all())
+
+    def test_player_cannot_join_game_in_closed_month(self):
+        closed_month = Month.objects.create(year=2026, month=8, hall_fee=Decimal("0.00"), is_closed=True)
+        closed_game = Game.objects.create(month=closed_month, cost=Decimal("1000"))
+        dave = User.objects.create_user("dave", password="pass12345")
+
+        self.client.force_login(dave)
+        response = self.client.post(reverse("tracker:game_join", args=[closed_game.pk]))
+        self.assertRedirects(response, reverse("tracker:game_detail", args=[closed_game.pk]))
+        self.assertNotIn(dave, closed_game.players.all())
+
     def test_game_detail_lists_every_participant(self):
         self.client.force_login(self.alice)
         response = self.client.get(reverse("tracker:game_detail", args=[self.game.pk]))

@@ -17,6 +17,11 @@
 
 {% if is_participant %}
   <p><a class="btn primary" href="{% url 'tracker:payment_create' game.pk %}">Внести свою оплату</a></p>
+{% else %}
+  <form method="post" action="{% url 'tracker:game_join' game.pk %}">
+    {% csrf_token %}
+    <button class="btn primary" type="submit">Записаться на игру</button>
+  </form>
 {% endif %}
 
 <h2>Кто что оплатил</h2>
