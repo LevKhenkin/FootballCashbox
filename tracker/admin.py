@@ -25,6 +25,7 @@ class MonthAdmin(admin.ModelAdmin):
     list_display = [
         "__str__",
         "hall_fee",
+        "starting_capital",
         "expenses_total",
         "total_due",
         "collected_total",

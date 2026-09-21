@@ -47,12 +47,13 @@
 <h2>По месяцам</h2>
 <table class="grid">
   <thead>
-    <tr><th>Месяц</th><th>Зал</th><th>Общие траты</th><th>Нужно собрать</th><th>Собрано</th><th>Баланс</th></tr>
+    <tr><th>Месяц</th><th>Стартовый капитал</th><th>Зал</th><th>Общие траты</th><th>Нужно собрать</th><th>Собрано</th><th>Баланс</th></tr>
   </thead>
   <tbody>
     {% for row in months_rows %}
       <tr>
         <td>{{ row.month }}</td>
+        <td>{{ row.starting_capital }}</td>
         <td>{{ row.hall_fee }}</td>
         <td>{{ row.expenses_total }}</td>
         <td>{{ row.total_due }}</td>
@@ -60,7 +61,7 @@
         <td class="{% if row.balance < 0 %}warn{% else %}ok{% endif %}">{{ row.balance }}</td>
       </tr>
     {% empty %}
-      <tr><td colspan="6" class="empty">Месяцы ещё не заведены.</td></tr>
+      <tr><td colspan="7" class="empty">Месяцы ещё не заведены.</td></tr>
     {% endfor %}
   </tbody>
 </table>

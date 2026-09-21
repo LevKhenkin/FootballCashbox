@@ -281,6 +281,7 @@ def summary(request):
             {
                 "month": month,
                 "hall_fee": month.hall_fee,
+                "starting_capital": month.starting_capital,
                 "expenses_total": month.expenses_total,
                 "total_due": month.total_due,
                 "collected": month.collected_total,
