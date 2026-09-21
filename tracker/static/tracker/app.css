@@ -116,3 +116,5 @@ form label { display: block; color: var(--muted); font-size: 13px; margin-bottom
 .status.rejected { color: var(--muted); }
 
 .payment-line { margin-bottom: 4px; font-size: 13px; }
+
+hr.sep { border: none; border-top: 1px solid var(--line); margin: 16px 0; }

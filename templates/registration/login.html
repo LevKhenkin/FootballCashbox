@@ -11,5 +11,13 @@
     {{ form.as_p }}
     <button class="primary" type="submit">Войти</button>
   </form>
+
+  <hr class="sep">
+  <p class="muted">
+    Нет аккаунта? <a href="{% url 'tracker:signup' %}">Зарегистрироваться</a>
+    {% if password_reset_enabled %}
+      · Забыли пароль? <a href="{% url 'password_reset' %}">Восстановить</a>
+    {% endif %}
+  </p>
 </div>
 {% endblock %}

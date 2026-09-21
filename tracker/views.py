@@ -1,11 +1,13 @@
 from decimal import Decimal
 
 from django.contrib import messages
+from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.db.models import Prefetch, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import ExpenseContributionForm, PaymentForm, ProfileForm
+from .auth_forms import SignUpForm
 from .models import Expense, ExpenseContribution, Game, Month, Payment, money
 
 ZERO = Decimal("0.00")
@@ -395,3 +397,20 @@ def profile(request):
         form = ProfileForm(instance=request.user)
 
     return render(request, "tracker/profile.html", {"form": form})
+
+
+def signup(request):
+    if request.user.is_authenticated:
+        return redirect("tracker:game_list")
+
+    if request.method == "POST":
+        form = SignUpForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            messages.success(request, "Аккаунт создан. Добро пожаловать!")
+            return redirect("tracker:game_list")
+    else:
+        form = SignUpForm()
+
+    return render(request, "registration/signup.html", {"form": form})

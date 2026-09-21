@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Регистрация — Футбольная касса{% endblock %}
+
+{% block content %}
+<div class="card narrow">
+  <h1>Регистрация</h1>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="primary" type="submit">Создать аккаунт</button>
+    <a class="btn" href="{% url 'login' %}">У меня уже есть аккаунт</a>
+  </form>
+</div>
+{% endblock %}
+
