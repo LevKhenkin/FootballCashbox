@@ -284,3 +284,17 @@ class ViewTests(BaseData):
         response = self.client.get(reverse("login"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Восстановить")
+
+
+class AdminExportTests(TestCase):
+    def test_admin_export_excel(self):
+        admin_user = User.objects.create_superuser("admin", "admin@example.com", "pass12345")
+        self.client.force_login(admin_user)
+        response = self.client.get("/admin/export-excel/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            response["Content-Type"],
+        )
+        # XLSX is a zip archive starting with PK
+        self.assertTrue(response.content.startswith(b"PK"))

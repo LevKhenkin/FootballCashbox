@@ -1,6 +1,12 @@
 from django.contrib import admin
+from django.contrib.auth import get_user_model
+from django.contrib.auth.admin import UserAdmin
 
+from .admin_site import admin_site
 from .models import Expense, ExpenseContribution, Game, Month, Payment
+
+User = get_user_model()
+admin_site.register(User, UserAdmin)
 
 
 class ExpenseInline(admin.TabularInline):
@@ -20,7 +26,7 @@ class ExpenseContributionInline(admin.TabularInline):
     autocomplete_fields = ["player"]
 
 
-@admin.register(Month)
+@admin.register(Month, site=admin_site)
 class MonthAdmin(admin.ModelAdmin):
     list_display = [
         "__str__",
@@ -52,7 +58,7 @@ class MonthAdmin(admin.ModelAdmin):
         return obj.balance
 
 
-@admin.register(Game)
+@admin.register(Game, site=admin_site)
 class GameAdmin(admin.ModelAdmin):
     list_display = [
         "__str__",
@@ -86,7 +92,7 @@ class GameAdmin(admin.ModelAdmin):
         return obj.remaining_total
 
 
-@admin.register(Payment)
+@admin.register(Payment, site=admin_site)
 class PaymentAdmin(admin.ModelAdmin):
     list_display = ["player", "game", "amount", "method", "paid_on", "status"]
     list_filter = ["status", "method", "game__month", "paid_on"]
@@ -105,7 +111,7 @@ class PaymentAdmin(admin.ModelAdmin):
         self.message_user(request, f"Отклонено оплат: {updated}")
 
 
-@admin.register(Expense)
+@admin.register(Expense, site=admin_site)
 class ExpenseAdmin(admin.ModelAdmin):
     list_display = [
         "title",
@@ -129,7 +135,7 @@ class ExpenseAdmin(admin.ModelAdmin):
         return obj.remaining_total
 
 
-@admin.register(ExpenseContribution)
+@admin.register(ExpenseContribution, site=admin_site)
 class ExpenseContributionAdmin(admin.ModelAdmin):
     list_display = ["player", "expense", "amount", "method", "paid_on", "status"]
     list_filter = ["status", "method", "expense__month", "paid_on"]
