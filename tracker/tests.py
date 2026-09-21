@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.contrib.auth.models import User
+from django.core import mail
 from django.test import TestCase
 from django.urls import reverse
 
@@ -230,3 +231,32 @@ class ViewTests(BaseData):
         self.assertEqual(self.alice.first_name, "Иван")
         self.assertEqual(self.alice.last_name, "Иванов")
         self.assertEqual(self.alice.email, "ivan@example.com")
+
+    def test_signup_creates_player_user(self):
+        response = self.client.post(
+            reverse("tracker:signup"),
+            {
+                "username": "newplayer",
+                "first_name": "Новый",
+                "last_name": "Игрок",
+                "email": "player@example.com",
+                "password1": "StrongPass123!@#",
+                "password2": "StrongPass123!@#",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        user = User.objects.get(username="newplayer")
+        self.assertFalse(user.is_staff)
+        self.assertFalse(user.is_superuser)
+        self.assertEqual(user.email, "player@example.com")
+
+    def test_password_reset_sends_email_when_email_present(self):
+        self.alice.email = "alice@example.com"
+        self.alice.save(update_fields=["email"])
+        response = self.client.post(
+            reverse("password_reset"),
+            {"email": "alice@example.com"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("reset", mail.outbox[0].body.lower())

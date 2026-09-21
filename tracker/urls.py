@@ -20,4 +20,5 @@ urlpatterns = [
     path("my/payments/", views.my_payments, name="my_payments"),
     path("summary/", views.summary, name="summary"),
     path("profile/", views.profile, name="profile"),
+    path("signup/", views.signup, name="signup"),
 ]
