@@ -110,6 +110,18 @@ class MonthTotalsTests(BaseData):
         )
         self.assertEqual(self.month.collected_total, Decimal("1000.00"))
 
+    def test_balance_includes_starting_capital(self):
+        self.month.starting_capital = Decimal("2000.00")
+        self.month.save(update_fields=["starting_capital"])
+        Payment.objects.create(
+            game=self.game,
+            player=self.alice,
+            amount=Decimal("1500"),
+            status=Payment.Status.CONFIRMED,
+        )
+        # total_due = 12000 (hall), collected = 1500, starting = 2000 => balance = -8500
+        self.assertEqual(self.month.balance, Decimal("-8500.00"))
+
 
 class ViewTests(BaseData):
     def test_pages_require_login(self):

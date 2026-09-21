@@ -31,6 +31,14 @@ class Month(models.Model):
         validators=[MinValueValidator(ZERO)],
         help_text="Сумма, которую нужно оплатить залу за месяц. Вносится админом.",
     )
+    starting_capital = models.DecimalField(
+        "Стартовый капитал",
+        max_digits=10,
+        decimal_places=2,
+        default=ZERO,
+        validators=[MinValueValidator(ZERO)],
+        help_text="Остаток денег на начало месяца (например, с прошлого месяца).",
+    )
     is_closed = models.BooleanField("Месяц закрыт", default=False)
     note = models.CharField("Комментарий", max_length=255, blank=True)
 
@@ -70,8 +78,8 @@ class Month(models.Model):
 
     @property
     def balance(self) -> Decimal:
-        """Положительное значение — собрано больше, чем нужно."""
-        return money(self.collected_total - self.total_due)
+        """Положительное значение — денег больше, чем нужно."""
+        return money(self.starting_capital + self.collected_total - self.total_due)
 
 
 class Game(models.Model):
