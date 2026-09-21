@@ -1,0 +1,9 @@
+{% extends "admin/index.html" %}
+
+{% block content %}
+  <div style="margin-bottom: 16px;">
+    <a class="button" href="{% url 'admin:export_excel' %}">Выгрузить все данные в Excel</a>
+  </div>
+  {{ block.super }}
+{% endblock %}
+
